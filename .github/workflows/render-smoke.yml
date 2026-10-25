@@ -1,0 +1,108 @@
+name: render-smoke
+
+# Proves the FULL loop Bilal asked to watch: push -> Actions renders a real
+# video -> the video lands on a GitHub Release. Renders
+# examples/remotion-smoke/ (3s, 1920x1080, motion graphics) and publishes
+# smoke.mp4 as a prerelease. See docs/github-actions.md.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/smoke/render.txt"
+      - ".github/workflows/render-smoke.yml"
+      - "examples/remotion-smoke/**"
+
+permissions:
+  contents: write # required to create the Release
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: examples/remotion-smoke
+        run: npm install --no-audit --no-fund
+
+      - name: Render smoke card
+        working-directory: examples/remotion-smoke
+        run: npx remotion render src/index.ts SmokeCard out/smoke.mp4 --codec=h264 --crf=18
+
+      - name: Verify render
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          ffprobe -v error -show_entries format=duration,size \
+            -show_entries stream=codec_name,width,height \
+            examples/remotion-smoke/out/smoke.mp4
+
+      - name: Upload render artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: remotion-smoke
+          path: examples/remotion-smoke/out/smoke.mp4
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish smoke Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "smoke-${{ github.run_number }}" \
+            --prerelease \
+            --title "Smoke test ${{ github.run_number }}" \
+            --notes "Automated render-smoke run #${{ github.run_number }} (commit ${{ github.sha }}). Renders examples/remotion-smoke at 1920x1080 and attaches smoke.mp4 — this release proves the Actions -> Release pipeline that finished Orb Theory videos will use (tag convention: video-NNN-slug-vX.Y.Z; see docs/github-actions.md)." \
+            examples/remotion-smoke/out/smoke.mp4
+
+      # Connector-readable run record (see docs/github-actions.md): render
+      # manifest (ffprobe) + status committed to runs/render-smoke/<run-id>/.
+      # The MP4 itself lives on the Release, not in git.
+      - name: Commit run record
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          REC="runs/render-smoke/${{ github.run_id }}"
+          mkdir -p "$REC"
+          if [ -f examples/remotion-smoke/out/smoke.mp4 ]; then
+            ffprobe -v error -show_entries format=duration,size,bit_rate \
+              -show_entries stream=codec_name,width,height,r_frame_rate \
+              -of json examples/remotion-smoke/out/smoke.mp4 > "$REC/render-manifest.json" || true
+          fi
+          REC="$REC" python3 - <<'PY'
+          import json, os
+          rec = os.environ["REC"]
+          manifest = {}
+          mj = os.path.join(rec, "render-manifest.json")
+          if os.path.exists(mj):
+              manifest = json.load(open(mj))
+          status = {
+              "workflow": "render-smoke",
+              "run_id": os.environ.get("GITHUB_RUN_ID"),
+              "run_number": os.environ.get("GITHUB_RUN_NUMBER"),
+              "job_status": os.environ.get("JOB_STATUS"),
+              "sha": os.environ.get("GITHUB_SHA"),
+              "composition": "SmokeCard (examples/remotion-smoke)",
+              "release_tag": "smoke-" + (os.environ.get("GITHUB_RUN_NUMBER") or ""),
+              "probe": manifest,
+          }
+          json.dump(status, open(os.path.join(rec, "status.json"), "w"), indent=1)
+          print(json.dumps(status))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REC"
+          if git diff --cached --quiet; then
+            echo "nothing to record"
+          else
+            git commit -m "runs: render-smoke ${{ github.run_id }} (${JOB_STATUS})"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
