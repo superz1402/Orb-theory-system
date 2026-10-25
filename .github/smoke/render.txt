@@ -1,0 +1,5 @@
+Orb Theory render-smoke trigger. Pushing a change to this file runs
+.github/workflows/render-smoke.yml, which renders examples/remotion-smoke/
+(a 3s 1920x1080 motion-graphics card) and attaches the MP4 to a prerelease
+GitHub Release — proving the full Actions -> Release loop end to end.
+See docs/github-actions.md.
