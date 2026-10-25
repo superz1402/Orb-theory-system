@@ -160,8 +160,26 @@ than a single-country channel). Approved by Bilal 2026-10-25.
   detail-crop), not the content. Primary format is now **16:9** (see
   Formats); 9:16 fit is designed only when a derivative Short is cut.
 - **The Orb**: small, minimal, elegant line/gold logo mark — intro (≤2 s), outro,
-  tiny watermark at most. **Never** a cartoon face carrying scenes (v1 failure).
-- **Banned**: emoji chips, CSS-cartoon mascot scenes, whole-section caption
+  tiny watermark at most. It is the channel's logo and the Archivist's seal —
+  **never** a face carrying scenes (v1 failure); the face role belongs to
+  Myang, below.
+- **Myang — core brand asset (approved by Bilal 2026-10-26):** the
+  Archivist's visible form and the channel's mascot — a cream plush
+  archivist with emerald-velvet points, brass hand-stamp, and the FILE № 001
+  tag, designed in the channel palette above (archive emerald `#0D2B23`,
+  paper `#F2EAD8`, aged gold `#C9A227`, verdict red `#B3402A`). **Master rig
+  location: `~/workspace/youtube-channel/mascot-myang/`** (`myang.svg`
+  print master + Remotion rig in `demo/`); design document:
+  `docs/mascot-myang.md`. **Palette lock:** Myang is drawn only in the
+  channel palette — no recolours, no seasonal variants. **No off-model
+  redraws:** expressions are rig parameter states only (default-unimused,
+  curious, shocked, pleased, sleepy, stamp-rage); any frame of Myang not
+  produced by the approved rig is a brand defect and fails Gate 4. Usage is
+  capped by AGENTS.md rules 17–18 (chapter-card host, end-card stamp
+  ritual, evidence examiner, ≤4 corner reactions/episode). First
+  integration: Episode 001.
+- **Banned**: emoji chips, CSS-cartoon mascot scenes (the sole exception is
+  the approved Myang rig, per AGENTS.md rules 17–18), whole-section caption
   blocks, generic stock montages, mixed random AI imagery.
 - Captions: built from the captured **word timings** (Edge WordBoundary or ASR
   round-trip) — timings are data; presentation differs by format.
