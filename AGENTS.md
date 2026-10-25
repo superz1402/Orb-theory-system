@@ -13,18 +13,21 @@ identity/tax/bank at monetization). Never ask Bilal for anything else.**
 2. `docs/channel-bible.md` — niche, formats, voice, visual identity.
 3. `docs/character-bible.md` — The Archivist: the persona every script, vocal
    take, and edit is performed in. Not optional flavour — a monetization asset.
-4. `docs/retention-scripting.md` — the hook system and the script scoring
+4. `docs/mascot-myang.md` — Myang: the Archivist's approved on-screen form
+   (rig, expression usage, integration modes and caps). Approved by Bilal
+   2026-10-26; rules 17–18 enforce the limits.
+5. `docs/retention-scripting.md` — the hook system and the script scoring
    rubric. No script leaves S2 unscored.
-5. `docs/media-sources.md` — the expanded CC source registry (the only places
+6. `docs/media-sources.md` — the expanded CC source registry (the only places
    media may come from) and how each source is license-verified.
-6. `docs/pipeline.md` — the S0→S8 stages you will execute.
-7. `docs/quality-gates.md` — the gates that reject work, including yours.
+7. `docs/pipeline.md` — the S0→S8 stages you will execute.
+8. `docs/quality-gates.md` — the gates that reject work, including yours.
    Gate 4 (effort & originality) is the v3 standard — read it before S2.
-8. `docs/monetization-policy.md` — the YouTube rules this channel lives or dies by.
-9. `docs/troubleshooting.md` — every known failure and its proven fix.
-10. `docs/github-actions.md` — the GitHub Actions layer (voice, ASR QC,
+9. `docs/monetization-policy.md` — the YouTube rules this channel lives or dies by.
+10. `docs/troubleshooting.md` — every known failure and its proven fix.
+11. `docs/github-actions.md` — the GitHub Actions layer (voice, ASR QC,
     render smoke, per-video Releases) and the `runs/` result bridge.
-11. `episodes/001-scheeles-green/` — the worked example. Study its artifacts.
+12. `episodes/001-scheeles-green/` — the worked example. Study its artifacts.
 
 ## Format (2026-10-26 pivot — Bilal's v3 verdict)
 
@@ -52,10 +55,14 @@ S6 Captions + metadata + thumbnail → S7 Render + QC report → **QC GATE + GAT
 
 ## Hard rules — breaking any of these is a failed run
 
-1. **No AI-slop visuals.** Banned: CSS/SVG cartoon mascot faces as scene content,
-   emoji chips, caption-block walls, generic stock montages with nouns swapped,
-   AI-generated imagery as the default visual. Required: real, case-specific,
-   license-verified archival images as the visual spine (Commons / Wellcome / NLM).
+1. **No AI-slop visuals.** Banned: CSS/SVG cartoon mascot faces as scene content —
+   **the sole exception is Myang, the Archivist's approved rig**
+   (`docs/mascot-myang.md`), used only in the modes and caps of rules 17–18;
+   any other mascot-style face, and Myang redrawn in any other style, stays
+   banned — alongside emoji chips, caption-block walls, generic stock montages
+   with nouns swapped, and AI-generated imagery as the default visual.
+   Required: real, case-specific, license-verified archival images as the
+   visual spine (Commons / Wellcome / NLM).
    The Orb is a small minimal logo mark (intro/outro/watermark) only.
 2. **Facts gate.** Narration may only contain facts present in the episode's
    `02_facts.md`, each with a source. A catchy claim that isn't verified is cut,
@@ -127,6 +134,24 @@ S6 Captions + metadata + thumbnail → S7 Render + QC report → **QC GATE + GAT
     the documented mistake). Pace comes from casting, rate choice, and
     scripted pauses; long-form chapters are separated by composed
     music-only interludes (≈4–8 s), and long-form loudness is −16 LUFS.
+17. **Myang — the only mascot, only as the rig (2026-10-26, approved).** Myang
+    is The Archivist's visible form (`docs/mascot-myang.md`, approved by
+    Bilal 2026-10-26; master rig in `~/workspace/youtube-channel/mascot-myang/`).
+    The Orb remains the channel's logo mark. Myang is permitted in exactly
+    four modes: **chapter-card host, end-card ritual, evidence examiner, and
+    capped corner reactions**. He **never carries a scene's information
+    content**, **never appears over victim or solemn-evidence beats**, and is
+    **never drawn in any style but the approved rig** — expressions are rig
+    parameter states only; no off-model redraws, no substitute mascots.
+18. **Myang integration caps (hard limits, Gate 4 counts them).** Corner
+    reactions: **≤4 per episode, ≤3 s each**, placed bottom-right during
+    motion-graphics scenes only, on scripted `[ASIDE]`/verdict beats;
+    the *shocked* expression fires **≤1 per episode**. **Myang-hosted
+    chapter cards and the end-card stamp sign-off are standard** — every
+    episode closes with the stamp slam + the *Filed under: …* catchphrase
+    (a static outro card is no longer the standard). First integration:
+    Episode 001, composited at assembly (S7) as a separate overlay/host
+    pass — chapter scenes are not re-rendered for Myang.
 
 ## Environment (proven on the reference VM, 2026-10-25 — full detail in troubleshooting)
 
