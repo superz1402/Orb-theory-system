@@ -1,0 +1,25 @@
+{
+ "workflow": "render-smoke",
+ "run_id": "40244727854",
+ "run_number": "4",
+ "job_status": "success",
+ "sha": "6dfbf8dffd86da2a3599c602b39c3c27993ee79f",
+ "composition": "SmokeCard (examples/remotion-smoke)",
+ "release_tag": "smoke-4",
+ "probe": {
+  "programs": [],
+  "streams": [
+   {
+    "codec_name": "h264",
+    "width": 1920,
+    "height": 1080,
+    "r_frame_rate": "30/1"
+   }
+  ],
+  "format": {
+   "duration": "3.000000",
+   "size": "214503",
+   "bit_rate": "572008"
+  }
+ }
+}
