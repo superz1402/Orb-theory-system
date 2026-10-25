@@ -4,3 +4,4 @@ Orb Theory render-smoke trigger. Pushing a change to this file runs
 GitHub Release — proving the full Actions -> Release loop end to end.
 See docs/github-actions.md.
 retrigger: api-push
+retrigger: post-fix
