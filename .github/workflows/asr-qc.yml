@@ -1,0 +1,235 @@
+name: asr-qc
+
+# ASR round-trip QC (part of the S7 QC battery, docs/quality-gates.md):
+# transcribe the narration with faster-whisper, diff it word-by-word against
+# the script that was voiced, and report every mismatch. Bilal's benchmark
+# from the Somerton film: 0 mismatches / 1,967 words. This is the check that
+# catches a TTS voice mispronouncing a name the script spelled correctly.
+# See docs/github-actions.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      script_path:
+        description: "Script that was voiced (repo-relative)"
+        required: true
+      audio_path:
+        description: "Audio inside the repo to transcribe (optional if the script's <stem>.audio.wav sits next to it)"
+        required: false
+        default: ""
+      audio_artifact_run_id:
+        description: "Run ID of a voice-tts run whose artifact holds the audio (optional)"
+        required: false
+        default: ""
+      audio_artifact_name:
+        description: "Artifact name in that run (e.g. voice-001-scheeles-green)"
+        required: false
+        default: ""
+      model:
+        description: "faster-whisper model size"
+        required: false
+        default: "small"
+        type: choice
+        options: [tiny, base, small, medium]
+      strict:
+        description: "Fail the job when mismatches are found"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write # commit the run record back under runs/ (see docs/github-actions.md)
+  actions: read
+
+jobs:
+  asr-qc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg + faster-whisper
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          pip install --quiet faster-whisper
+
+      - name: Download voice artifact (optional)
+        if: inputs.audio_artifact_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.audio_artifact_name }}
+          run-id: ${{ inputs.audio_artifact_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: asr-input
+
+      - name: Resolve audio + script
+        id: resolve
+        shell: bash
+        run: |
+          SCRIPT="${{ inputs.script_path }}"
+          [ -f "$SCRIPT" ] || { echo "::error::Script not found: $SCRIPT"; exit 1; }
+          AUDIO="${{ inputs.audio_path }}"
+          if [ -z "$AUDIO" ] && [ -d asr-input ]; then
+            AUDIO="$(find asr-input -name '*.wav' -o -name '*.mp3' | head -n 1)"
+          fi
+          if [ -z "$AUDIO" ]; then
+            STEM="$(basename "$SCRIPT" | sed 's/\.[^.]*$//')"
+            AUDIO="$(dirname "$SCRIPT")/$STEM.audio.wav"
+          fi
+          [ -f "$AUDIO" ] || { echo "::error::Audio not found: $AUDIO"; exit 1; }
+          echo "script=$SCRIPT" >> "$GITHUB_OUTPUT"
+          echo "audio=$AUDIO"   >> "$GITHUB_OUTPUT"
+          echo "Transcribing $AUDIO against $SCRIPT"
+
+      - name: Transcribe + diff
+        id: diff
+        shell: bash
+        run: |
+          python - <<'PY'
+          import difflib, json, os, re, sys
+
+          audio  = "${{ steps.resolve.outputs.audio }}"
+          script = "${{ steps.resolve.outputs.script }}"
+          model  = "${{ inputs.model }}"
+
+          def spoken_words(text):
+              # Mirror scripts/edge_tts_actions.py cleaning: only spoken words count.
+              text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
+              text = re.sub(r"^\s{0,3}#{1,6}\s*", "", text, flags=re.M)
+              text = re.sub(r"\[[^\]]*\]", " ", text)
+              text = re.sub(r"(\*\*|__|\*|_|`)", "", text)
+              return normalize(text)
+
+          def normalize(text):
+              text = text.lower().replace("’", "'")
+              text = re.sub(r"[^a-z0-9' ]", " ", text)
+              return [w for w in text.split() if w]
+
+          from faster_whisper import WhisperModel
+          m = WhisperModel(model, device="cpu", compute_type="int8")
+          segments, info = m.transcribe(audio, language="en", beam_size=5,
+                                        vad_filter=True)
+          transcript = " ".join(s.text for s in segments)
+          ref = spoken_words(open(script, encoding="utf-8").read())
+          hyp = normalize(transcript)
+
+          sm = difflib.SequenceMatcher(a=ref, b=hyp, autojunk=False)
+          mismatches = []
+          for tag, i1, i2, j1, j2 in sm.get_opcodes():
+              if tag == "equal":
+                  continue
+              mismatches.append({
+                  "type": tag,
+                  "script": " ".join(ref[i1:i2]),
+                  "heard":  " ".join(hyp[j1:j2]),
+                  "context": " ".join(ref[max(0, i1-6):i1]),
+              })
+          report = {
+              "audio": audio, "script": script, "model": model,
+              "language": info.language,
+              "script_words": len(ref), "heard_words": len(hyp),
+              "mismatch_blocks": len(mismatches),
+              "mismatch_words": sum(max(len(x["script"].split()),
+                                        len(x["heard"].split())) for x in mismatches),
+              "mismatches": mismatches,
+              "transcript": transcript.strip(),
+          }
+          with open("asr-qc-report.json", "w", encoding="utf-8") as f:
+              json.dump(report, f, indent=1)
+          lines = [f"# ASR QC report",
+                   f"",
+                   f"- Audio: `{audio}`",
+                   f"- Script: `{script}`",
+                   f"- Model: faster-whisper `{model}` (detected language: {info.language})",
+                   f"- Script words: {len(ref)} · Heard words: {len(hyp)}",
+                   f"- **Mismatch blocks: {len(mismatches)}** ({report['mismatch_words']} words)",
+                   f""]
+          if mismatches:
+              lines += ["| Type | Script says | ASR heard | After context |",
+                        "|---|---|---|---|"]
+              for x in mismatches[:200]:
+                  lines.append(f"| {x['type']} | {x['script']} | {x['heard']} | …{x['context']} |")
+          else:
+              lines.append("Clean round-trip — every scripted word was heard as written.")
+          with open("asr-qc-report.md", "w", encoding="utf-8") as f:
+              f.write("\n".join(lines) + "\n")
+          print("\n".join(lines))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"mismatches={len(mismatches)}\n")
+          PY
+
+      - name: Upload QC report
+        uses: actions/upload-artifact@v4
+        with:
+          name: asr-qc-report
+          path: |
+            asr-qc-report.md
+            asr-qc-report.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report to job summary
+        if: always()
+        run: cat asr-qc-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Connector-readable run record (see docs/github-actions.md): the QC
+      # report is committed to runs/asr-qc/<run-id>/ so it can be read back
+      # through the GitHub connector, which has no Actions API.
+      - name: Commit run record
+        if: always()
+        shell: bash
+        env:
+          MISMATCHES: ${{ steps.diff.outputs.mismatches }}
+          JOB_STATUS: ${{ job.status }}
+          SCRIPT: ${{ steps.resolve.outputs.script }}
+          AUDIO: ${{ steps.resolve.outputs.audio }}
+        run: |
+          REC="runs/asr-qc/${{ github.run_id }}"
+          mkdir -p "$REC"
+          for f in asr-qc-report.md asr-qc-report.json; do
+            [ -f "$f" ] && cp "$f" "$REC/$f" || true
+          done
+          REC="$REC" python3 - <<'PY'
+          import json, os
+          rec = os.environ["REC"]
+          report = {}
+          rj = os.path.join(rec, "asr-qc-report.json")
+          if os.path.exists(rj):
+              report = json.load(open(rj))
+          status = {
+              "workflow": "asr-qc",
+              "run_id": os.environ.get("GITHUB_RUN_ID"),
+              "run_number": os.environ.get("GITHUB_RUN_NUMBER"),
+              "job_status": os.environ.get("JOB_STATUS"),
+              "sha": os.environ.get("GITHUB_SHA"),
+              "script": os.environ.get("SCRIPT"),
+              "audio": os.environ.get("AUDIO"),
+              "script_words": report.get("script_words"),
+              "heard_words": report.get("heard_words"),
+              "mismatch_blocks": report.get("mismatch_blocks"),
+              "mismatch_words": report.get("mismatch_words"),
+              "benchmark": "Bilal's Somerton standard: 0 mismatches",
+          }
+          json.dump(status, open(os.path.join(rec, "status.json"), "w"), indent=1)
+          print(json.dumps(status))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REC"
+          if git diff --cached --quiet; then
+            echo "nothing to record"
+          else
+            git commit -m "runs: asr-qc ${{ github.run_id }} (mismatches: ${MISMATCHES:-unknown})"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
+
+      - name: Strict gate
+        if: inputs.strict && steps.diff.outputs.mismatches != '0'
+        run: |
+          echo "::error::ASR QC strict mode: ${{ steps.diff.outputs.mismatches }} mismatch block(s)"
+          exit 1
