@@ -1,0 +1,35 @@
+# Renders & media (never commit big media — attach to GitHub Releases instead, per opuscar convention)
+*.mp4
+*.mov
+*.wav
+*.mp3
+!episodes/**/previews/*.mp4
+segments/
+renders/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*-venv/
+
+# Models & caches (Kokoro ~340MB, whisper, etc.)
+*.onnx
+models/
+.cache/
+
+# Secrets — NEVER commit
+.env
+*.pem
+combined-ca.pem
+client_secret*.json
+*token*.json
+
+# OS / editor
+.DS_Store
+*.swp
+
+# Node / Remotion (examples + future render projects)
+node_modules/
+examples/*/out/
