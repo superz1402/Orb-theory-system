@@ -1,0 +1,214 @@
+name: release-video
+
+# The per-video release pipeline. A video is not "published" in this system
+# until its GitHub Release exists (see AGENTS.md + docs/github-actions.md).
+# This workflow takes a finished MP4 — either downloaded from a previous
+# run's artifact or committed in the repo — and creates the Release under
+# Bilal's opuscar tag convention:
+#
+#     video-<NNN>-<slug>-v<MAJOR.MINOR.PATCH>     e.g. video-001-scheeles-green-v1.0.0
+#
+# with the MP4, the episode metadata, and the credits file attached.
+
+on:
+  workflow_dispatch:
+    inputs:
+      episode_number:
+        description: "Episode number, zero-padded (e.g. 001)"
+        required: true
+      episode_slug:
+        description: "Episode slug (e.g. scheeles-green)"
+        required: true
+      version:
+        description: "Release version, semver without the v (e.g. 1.0.0)"
+        required: true
+        default: "1.0.0"
+      title:
+        description: "Release title (defaults to the episode metadata title)"
+        required: false
+        default: ""
+      video_path_in_repo:
+        description: "MP4 path inside the repo (use this OR artifact inputs)"
+        required: false
+        default: ""
+      artifact_run_id:
+        description: "Run ID that produced the video artifact"
+        required: false
+        default: ""
+      artifact_name:
+        description: "Artifact name in that run (e.g. render-001-scheeles-green)"
+        required: false
+        default: ""
+      video_filename_in_artifact:
+        description: "MP4 filename inside the artifact"
+        required: false
+        default: "video.mp4"
+      prerelease:
+        description: "Mark as prerelease (draft cuts, review copies)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write # create the Release + tag
+  actions: read   # download artifacts from other runs
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download video artifact (optional)
+        if: inputs.artifact_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.artifact_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: release-input
+
+      - name: Assemble release assets
+        id: assemble
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          # --- locate the video -------------------------------------------------
+          VIDEO=""
+          if [ -n "${{ inputs.video_path_in_repo }}" ]; then
+            VIDEO="${{ inputs.video_path_in_repo }}"
+          elif [ -d release-input ]; then
+            VIDEO="release-input/${{ inputs.video_filename_in_artifact }}"
+            if [ ! -f "$VIDEO" ]; then
+              VIDEO="$(find release-input -name '*.mp4' | head -n 1)"
+            fi
+          fi
+          [ -n "$VIDEO" ] && [ -f "$VIDEO" ] || {
+            echo "::error::No video found. Give video_path_in_repo or artifact_run_id + artifact_name."
+            exit 1
+          }
+          CANON="orb-theory-${{ inputs.episode_number }}-${{ inputs.episode_slug }}-v${{ inputs.version }}.mp4"
+          cp "$VIDEO" "release-assets/$CANON"
+          echo "video=release-assets/$CANON" >> "$GITHUB_OUTPUT"
+
+          # --- episode paperwork (metadata + credits), if present ---------------
+          EP_DIR="episodes/${{ inputs.episode_number }}-${{ inputs.episode_slug }}"
+          for f in metadata.md credits.md CREDITS.md; do
+            if [ -f "$EP_DIR/$f" ]; then
+              cp "$EP_DIR/$f" "release-assets/${{ inputs.episode_number }}-$f"
+              echo "attached $EP_DIR/$f"
+            fi
+          done
+          ls -la release-assets
+
+          # --- release notes ------------------------------------------------------
+          NOTES="release-notes.md"
+          {
+            echo "Orb Theory — Episode ${{ inputs.episode_number }}: ${{ inputs.episode_slug }} (v${{ inputs.version }})"
+            echo ""
+            echo "Rendered and released by the Orb Theory system. Tag convention: \`video-<NNN>-<slug>-v<version>\` (Bilal's opuscar style). See \`docs/github-actions.md\`."
+            if [ -f "$EP_DIR/metadata.md" ]; then
+              echo ""
+              echo "---"
+              echo ""
+              cat "$EP_DIR/metadata.md"
+            fi
+            if [ -f "$EP_DIR/credits.md" ]; then
+              echo ""
+              echo "---"
+              echo ""
+              echo "## Credits"
+              echo ""
+              cat "$EP_DIR/credits.md"
+            fi
+          } > "$NOTES"
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
+
+          # --- release title ------------------------------------------------------
+          TITLE="${{ inputs.title }}"
+          if [ -z "$TITLE" ] && [ -f "$EP_DIR/metadata.md" ]; then
+            TITLE="$(grep -m1 '^#' "$EP_DIR/metadata.md" | sed 's/^#\+ *//')"
+          fi
+          [ -n "$TITLE" ] || TITLE="Orb Theory ${{ inputs.episode_number }} — ${{ inputs.episode_slug }}"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Verify video
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          ffprobe -v error -show_entries format=duration,size \
+            -show_entries stream=codec_name,width,height \
+            "${{ steps.assemble.outputs.video }}"
+
+      - name: Create GitHub Release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="video-${{ inputs.episode_number }}-${{ inputs.episode_slug }}-v${{ inputs.version }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          EXTRA=""
+          if [ "${{ inputs.prerelease }}" = "true" ]; then EXTRA="--prerelease"; fi
+          gh release create "$TAG" $EXTRA \
+            --title "${{ steps.assemble.outputs.title }}" \
+            --notes-file "${{ steps.assemble.outputs.notes }}" \
+            release-assets/*
+          echo "### Released \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Assets:" >> "$GITHUB_STEP_SUMMARY"
+          ls release-assets >> "$GITHUB_STEP_SUMMARY"
+
+      # Connector-readable run record (see docs/github-actions.md): the
+      # Release is the record for the video itself; this status file is the
+      # machine-readable receipt — tag, assets, probe — committed to
+      # runs/release-video/<run-id>/.
+      - name: Commit run record
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+          TAG: ${{ steps.release.outputs.tag }}
+          TITLE: ${{ steps.assemble.outputs.title }}
+          VIDEO: ${{ steps.assemble.outputs.video }}
+        run: |
+          REC="runs/release-video/${{ github.run_id }}"
+          mkdir -p "$REC"
+          REC="$REC" python3 - <<'PY'
+          import glob, json, os, subprocess
+          rec = os.environ["REC"]
+          probe = {}
+          video = os.environ.get("VIDEO") or ""
+          if video and os.path.exists(video):
+              out = subprocess.run(
+                  ["ffprobe", "-v", "error", "-show_entries",
+                   "format=duration,size,bit_rate",
+                   "-show_entries", "stream=codec_name,width,height",
+                   "-of", "json", video],
+                  capture_output=True, text=True)
+              try:
+                  probe = json.loads(out.stdout)
+              except json.JSONDecodeError:
+                  probe = {}
+          status = {
+              "workflow": "release-video",
+              "run_id": os.environ.get("GITHUB_RUN_ID"),
+              "run_number": os.environ.get("GITHUB_RUN_NUMBER"),
+              "job_status": os.environ.get("JOB_STATUS"),
+              "sha": os.environ.get("GITHUB_SHA"),
+              "release_tag": os.environ.get("TAG"),
+              "release_title": os.environ.get("TITLE"),
+              "assets": sorted(os.path.basename(p) for p in glob.glob("release-assets/*")),
+              "probe": probe,
+          }
+          json.dump(status, open(os.path.join(rec, "status.json"), "w"), indent=1)
+          print(json.dumps(status))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$REC"
+          if git diff --cached --quiet; then
+            echo "nothing to record"
+          else
+            git commit -m "runs: release-video ${{ github.run_id }} (${TAG:-no-tag})"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
