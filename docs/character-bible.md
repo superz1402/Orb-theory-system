@@ -4,7 +4,10 @@
 2026-10-26: pilot v3 performed the character and Bilal's verdict rejected its
 *pace and format*, not the persona — the vocal spec below now carries the
 pacing law. Still UNPROVEN at long-form length; Episode 001 long-form is the
-test that counts.**
+test that counts. UPDATED 2026-10-26 (later): **the Archivist now has an
+approved visible form — Myang** (`docs/mascot-myang.md`, approved by Bilal
+2026-10-26). Voice and face are one character; the face section below
+governs his on-screen use. First integration: Episode 001.**
 
 ## Why this document exists
 
@@ -142,9 +145,41 @@ accepted.
 - **Lore discipline:** small continuities are allowed (he remembers past cases:
   *"Second green pigment this year. The archive is developing a theme."*) —
   one callback per episode maximum, never required viewing.
-- **Visual embodiment stays minimal:** the Orb mark is his seal — intro,
-  outro, watermark. He is a voice and a standard of judgement, not a cartoon
-  on screen (v1's failure). Episode artwork is episode-specific (Gate 4).
+- **Visual embodiment — Myang (approved 2026-10-26):** the Archivist has a
+  face, and it is **Myang** — the plush archivist of `docs/mascot-myang.md`.
+  Voice and face are **one character**: the dry delivery *is* that
+  half-lidded stare, and the stare is never performed in a different
+  register than the voice. He appears only in the approved modes
+  (chapter-card host, end-card ritual, evidence examiner, capped corner
+  reactions — AGENTS.md rules 17–18), never carries a scene's information,
+  never appears over victim or solemn-evidence beats, and is rendered only
+  from the approved rig. The Orb mark remains his seal and the channel's
+  logo (intro, outro, watermark). This supersedes the pre-approval line
+  "not a cartoon on screen": what v1 failed at was an unapproved CSS face
+  carrying scenes amid emoji chips — Myang is the opposite of that pattern,
+  a single rigged character under hard caps. Episode artwork stays
+  episode-specific (Gate 4).
+
+## The face — expression usage (Myang)
+
+Expressions are **rig parameter states, not redraws** (lid coverage, pupil
+offset, mouth weights, ear perk/droop, props) — the same geometry drives
+print, sheet, and screen, so the face can never drift off-model. Pair the
+expression to the script beat as follows (full rig spec:
+`docs/mascot-myang.md` §4):
+
+| Expression | Script beat it pairs with |
+|---|---|
+| **Default — unimused** | Narration presence, chapter cards, idle. The money shot — he wears it ~90% of his screen time, including under most `[ASIDE]` beats (the joke is that the face does not move). |
+| **Curious** (spectacles drop on) | An exhibit is introduced or a source is examined closely — the evidence-examiner beats; pairs with object-first inventory openings ("Item: one tube of paint."). |
+| **Shocked** | The single worst fact of the episode lands. **Max once per episode** — spending it twice spends it entirely. |
+| **Pleased** | The verdict is delivered and the case closes — the stamp has fallen; pairs with the *Filed under: …* sign-off over the end card. |
+| **Sleepy** | Era-transition jokes, "the archive at 3 a.m." beats, long-chapter breathers — the register drops, the file is dull, he files it anyway. |
+| **Stamp-rage** (determined squint, stamp raised) | Only the verdict-stamp beat itself — determination, never anger at a person. The physical form of "the dry pivot": compliment, full stop, consequence, *stamp*. |
+
+Motion language follows the voice: springs, settling, no bouncing — he
+*settles*, like plush. If an expression would need a gag the script doesn't
+have, the expression is wrong, not the script.
 
 ## Scoring the character (feeds the retention rubric)
 
