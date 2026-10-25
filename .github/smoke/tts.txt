@@ -1,3 +1,4 @@
 London, 1861. A mother hangs the most fashionable colour in England in her baby's nursery.
 retrigger: api-push
 retrigger: post-fix
+retrigger: argparse-fix
