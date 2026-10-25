@@ -74,8 +74,8 @@ jobs:
       - name: Synthesize narration
         run: |
           python scripts/edge_tts_actions.py "${{ steps.resolve.outputs.script }}" \
-            --voice "${{ inputs.voice || 'en-US-AndrewMultilingualNeural' }}" \
-            --rate "${{ inputs.rate || '-3%' }}"
+            --voice="${{ inputs.voice || 'en-US-AndrewMultilingualNeural' }}" \
+            --rate="${{ inputs.rate || '-3%' }}"
 
       - name: Upload voice artifact
         uses: actions/upload-artifact@v4
