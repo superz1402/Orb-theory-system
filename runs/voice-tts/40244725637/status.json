@@ -1,0 +1,14 @@
+{
+ "workflow": "voice-tts",
+ "run_id": "40244725637",
+ "run_number": "2",
+ "job_status": "failure",
+ "sha": "8e7483254adca510b2a29500a5f6f4279cedd411",
+ "script": ".github/smoke/tts.txt",
+ "episode": "smoke",
+ "timed_words": null,
+ "blocks": null,
+ "speech_seconds_blocks_only": null,
+ "audio_artifact": "voice-smoke",
+ "note": "audio.wav itself lives in the run artifact, not git; words/timing are the caption contract"
+}
