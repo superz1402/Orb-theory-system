@@ -1,4 +1,4 @@
-VOICE: en-US-EmmaNeural
+VOICE: en-GB-SoniaNeural
 RATE: -3%
 AUDIO-TO-RUNS: yes
 
