@@ -1,4 +1,4 @@
-VOICE: en-US-AvaNeural
+VOICE: en-US-EmmaNeural
 RATE: -3%
 AUDIO-TO-RUNS: yes
 
