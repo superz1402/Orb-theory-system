@@ -1,0 +1,14 @@
+{
+ "workflow": "voice-tts",
+ "run_id": "40264115395",
+ "run_number": "7",
+ "job_status": "success",
+ "sha": "abe6b78d59abe430eaf7c70abdeee62c13b1227d",
+ "script": "episodes/001-scheeles-green/voice-input.txt",
+ "episode": "001-scheeles-green",
+ "timed_words": 1141,
+ "blocks": 60,
+ "speech_seconds_blocks_only": 463.63,
+ "audio_artifact": "voice-001-scheeles-green",
+ "note": "audio.wav itself lives in the run artifact, not git; words/timing are the caption contract"
+}
