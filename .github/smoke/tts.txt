@@ -1,4 +1,11 @@
-London, 1861. A mother hangs the most fashionable colour in England in her baby's nursery.
-retrigger: api-push
-retrigger: post-fix
-retrigger: argparse-fix
+VOICE: en-US-AvaNeural
+RATE: -3%
+AUDIO-TO-RUNS: yes
+
+London, 1861. A mother hangs the most fashionable colour in England in her baby's nursery. It is, slowly and in writing, going to kill her children. But first — doesn't it look lovely?
+
+Carl Wilhelm Scheele, who discovered this colour, also tasted most of his own discoveries. This will not surprise you in a moment.
+
+Okay so. A penguin walks into a job interview. No wait, this is a true story and it's somehow worse. Stay with me.
+
+Filed under: beautiful — and lethal.
