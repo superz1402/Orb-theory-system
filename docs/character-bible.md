@@ -97,12 +97,24 @@ Three registers, blended in every episode — never only one:
 Character first, tooling second. The vocal take is *cast*, not generated and
 accepted.
 
-- **Production (once this repo is on GitHub): Microsoft Edge TTS
-  `en-US-AndrewMultilingualNeural`, rate −3%** (long-form −4%), synthesised on
-  GitHub Actions with WordBoundary capture — Bilal's house standard, per
-  `docs/channel-bible.md` §Voice and `docs/pipeline.md` §S4. Direction notes
-  for the take: sarcasm delivered *flat* (never signalled), pauses before
-  verdict lines, sign-off slowed a half-beat.
+- **CASTING LOCKED (2026-10-26): Microsoft Edge TTS `en-GB-SoniaNeural`,
+  rate −3%** — Myang's one voice on both channels (Orb Theory + Myangni),
+  synthesised on GitHub Actions with WordBoundary capture. Bilal's
+  voice-face-match rule (the voice must match the plush face — soft, never
+  manly) retired the Andrew lock below, and his delegation — *"for voices
+  use any of this three"* — put the final pick to an Actions audition of
+  `en-GB-SoniaNeural` vs `en-US-AvaNeural` vs `en-US-EmmaNeural` on the
+  standard 4-line script (runs 40256603490 / 40256680718 / 40256781807).
+  Sonia was the only candidate inside the 125–145 wpm narration band at the
+  house rate with no correction (hook 140.8 wpm, median F0 198 Hz — as
+  light as the Kokoro winner), and her British restraint is the Archivist's
+  deadpan register. Full evidence: `~/workspace/youtube-channel/voice-audition/EDGE-AUDITION.md`.
+  Production scripts carry the casting explicitly (`VOICE: en-GB-SoniaNeural`
+  / `RATE: -3%` input directives or workflow inputs — never the workflow's
+  Andrew default). Offline fallback: Kokoro `af_heart` (hook 142.6 wpm,
+  `voice-audition/AUDITION.md`). Direction notes for the take: sarcasm
+  delivered *flat* (never signalled), pauses before verdict lines, sign-off
+  slowed a half-beat.
 - **Pacing law (2026-10-26, from Bilal's v3 verdict — "too quick for no
   reason"): the finished performance measures 125–145 wpm on the final mix**
   (full standard: `docs/retention-scripting.md` §Pacing). The Archivist is
@@ -127,7 +139,8 @@ accepted.
   Record the winner and lock it for the episode; **one voice per episode**
   (agent-kit S4 law). v1/v2 used `bm_george` unauditioned — that default is
   retired. Whichever voice wins, it is a *draft* voice: the production standard
-  remains Edge/AndrewMultilingual via Actions.
+  is the locked casting above — Edge `en-GB-SoniaNeural` via Actions
+  (2026-10-26; Andrew retired for Myang-hosted narration).
 - **Pronunciation is the character's credibility:** lexicon + `say` fields per
   script (Gate 1), ASR round-trip verification (Gate 3). A mispronounced name
   is a character break.
