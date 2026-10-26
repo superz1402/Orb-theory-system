@@ -20,6 +20,18 @@ timing ledger. Differences from the opuscar original, by design:
 * Markdown dressing (``#`` headings, ``**bold**``, ``[STAGE DIRECTIONS]`` and
   ``<!-- comments -->``) is stripped before synthesis — stage directions are
   for humans and the editor, never for the voice.
+* Optional DIRECTIVE lines at the very top of the input file (casting /
+  audition support) are read as operator instructions and never spoken:
+  ``VOICE: <edge-voice>`` and ``RATE: <-3%>`` override the CLI/workflow
+  values — push-triggered runs always carry the workflow's default voice
+  flag, so a per-file casting (e.g. a voice audition committed to
+  ``.github/smoke/tts.txt``) needs this route. ``AUDIO-TO-RUNS: yes``
+  additionally writes ``runs/voice-tts/<GITHUB_RUN_ID>/audio-<voice>.json``
+  (voice, rate, base64 of a 64 kbps MP3 of the finished narration) so the
+  workflow's run-record commit carries listenable audition audio back —
+  the connector cannot download Actions artifacts, and ``*.mp3``/``*.wav``
+  are gitignored by design; production episode runs never set it, so
+  episode audio still lives only in run artifacts / Releases.
 * Outputs land NEXT TO the input file (``<stem>.audio.wav``,
   ``<stem>.words.json``, ``<stem>.timing.json``, plus a ``<stem>.blocks/``
   directory of per-block wavs/word files) instead of a fixed ``audio/`` tree,
@@ -107,8 +119,32 @@ def split_sentences(text: str, max_chars: int) -> list[str]:
     return chunks
 
 
-def load_blocks(path: str, max_chars: int) -> list[dict]:
+DIRECTIVE_RE = re.compile(r"^\s*(VOICE|RATE|AUDIO-TO-RUNS)\s*:\s*(\S.*?)\s*$",
+                          re.IGNORECASE)
+
+
+def parse_directives(raw: str) -> tuple[dict, str]:
+    """Split leading DIRECTIVE lines off the raw script text.
+
+    Directives are operator instructions (casting / audition), never
+    narration: only a run of matching lines at the very top of the file is
+    recognized, and those lines are removed before block parsing.
+    """
+    directives: dict = {}
+    lines = raw.splitlines()
+    i = 0
+    while i < len(lines):
+        m = DIRECTIVE_RE.match(lines[i])
+        if not m:
+            break
+        directives[m.group(1).upper()] = m.group(2)
+        i += 1
+    return directives, "\n".join(lines[i:])
+
+
+def load_blocks(path: str, max_chars: int) -> tuple[list[dict], dict]:
     raw = open(path, encoding="utf-8").read()
+    directives, raw = parse_directives(raw)
     blocks: list[dict] = []
     for para in re.split(r"\n\s*\n", raw):
         cleaned = clean_block(para)
@@ -116,7 +152,7 @@ def load_blocks(path: str, max_chars: int) -> list[dict]:
             continue
         for chunk in split_sentences(cleaned, max_chars):
             blocks.append({"id": f"b{len(blocks) + 1:03d}", "text": chunk})
-    return blocks
+    return blocks, directives
 
 
 # --------------------------------------------------------------------------
@@ -255,10 +291,18 @@ def main(argv: list[str] | None = None) -> int:
     os.makedirs(blocks_dir, exist_ok=True)
     tmp_mp3 = os.path.join(blocks_dir, "_tmp.mp3")
 
-    blocks = load_blocks(args.script, args.max_chars)
+    blocks, directives = load_blocks(args.script, args.max_chars)
     if not blocks:
         print("error: no speakable text found in script", file=sys.stderr)
         return 2
+    if directives.get("VOICE"):
+        print(f"directive override: voice {args.voice} -> {directives['VOICE']}",
+              flush=True)
+        args.voice = directives["VOICE"]
+    if directives.get("RATE"):
+        print(f"directive override: rate {args.rate} -> {directives['RATE']}",
+              flush=True)
+        args.rate = directives["RATE"]
     only = {s.strip() for s in args.only.split(",") if s.strip()}
     print(f"{args.script}: {len(blocks)} block(s), voice={args.voice} rate={args.rate}",
           flush=True)
@@ -333,6 +377,39 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  audio : {out_wav}")
     print(f"  words : {words_path}")
     print(f"  timing: {timing_path}")
+
+    # Audition-only export (directive-gated, see module docstring): carry a
+    # listenable MP3 back inside the run record as base64 JSON. Best-effort —
+    # an export failure must never fail an otherwise good take.
+    if directives.get("AUDIO-TO-RUNS", "").lower() in ("yes", "1", "true"):
+        run_id = os.environ.get("GITHUB_RUN_ID")
+        if not run_id:
+            print("  runs-export skipped: GITHUB_RUN_ID not set (not on Actions)")
+        else:
+            try:
+                import base64
+                import tempfile
+                repo_root = os.path.dirname(os.path.dirname(
+                    os.path.abspath(__file__)))
+                rec_dir = os.path.join(repo_root, "runs", "voice-tts", run_id)
+                os.makedirs(rec_dir, exist_ok=True)
+                slug = re.sub(r"[^a-z0-9]+", "-", args.voice.lower()).strip("-")
+                with tempfile.TemporaryDirectory() as td:
+                    tmp_mp3 = os.path.join(td, "audition.mp3")
+                    subprocess.run(
+                        ["ffmpeg", "-nostdin", "-y", "-i", out_wav,
+                         "-ac", "1", "-ar", "24000", "-c:a", "libmp3lame",
+                         "-b:a", "64k", tmp_mp3],
+                        capture_output=True, check=True)
+                    payload = base64.b64encode(open(tmp_mp3, "rb").read())
+                export = {"voice": args.voice, "rate": args.rate,
+                          "source_wav_seconds": round(total, 2),
+                          "mp3_64kbps_base64": payload.decode("ascii")}
+                out_json = os.path.join(rec_dir, f"audio-{slug}.json")
+                json.dump(export, open(out_json, "w", encoding="utf-8"))
+                print(f"  runs-export: {out_json}")
+            except Exception as e:  # noqa: BLE001 — never fail a take over it
+                print(f"  runs-export FAILED (non-fatal): {e}")
     return 0
 
 
